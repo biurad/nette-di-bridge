@@ -18,10 +18,11 @@
 namespace BiuradPHP\DependencyInjection;
 
 use Nette;
-use BiuradPHP\DependencyInjection\Config;
-use BiuradPHP\DependencyInjection\Interfaces\PassCompilerAwareInterface;
 use Nette\DI\Compiler;
+use BiuradPHP\DependencyInjection\Config;
 use Nette\DI\CompilerExtension as NetteCompilerExtension;
+use BiuradPHP\DependencyInjection\Concerns\ExtensionDefinitionsHelper;
+use BiuradPHP\DependencyInjection\Interfaces\PassCompilerAwareInterface;
 
 /**
  * Configurator compiling extension.
@@ -31,6 +32,9 @@ use Nette\DI\CompilerExtension as NetteCompilerExtension;
  */
 abstract class CompilerExtension extends NetteCompilerExtension
 {
+    /** @var ExtensionDefinitionsHelper|null */
+    private $helper;
+    
     /**
      * @internal do not use this function
      */
@@ -43,7 +47,7 @@ abstract class CompilerExtension extends NetteCompilerExtension
 	public function setCompiler(Compiler $compiler, string $name)
 	{
         $compiler = parent::setCompiler($compiler, $name);
-        
+
         if ($this instanceof PassCompilerAwareInterface) {
             $this->addCompilerPasses($this->compiler);
         }
@@ -84,6 +88,15 @@ abstract class CompilerExtension extends NetteCompilerExtension
 
         return !$extensionConfigs ? false : $extensionConfigs->getConfig();
     }
+
+	protected function getHelper(): ExtensionDefinitionsHelper
+	{
+		if ($this->helper === null) {
+			$this->helper = new ExtensionDefinitionsHelper($this->compiler);
+		}
+
+		return $this->helper;
+	}
 
     /**
      * Processes configuration data. Intended to be overridden by descendant.

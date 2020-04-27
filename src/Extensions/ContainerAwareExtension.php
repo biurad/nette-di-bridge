@@ -17,6 +17,7 @@
 
 namespace BiuradPHP\DependencyInjection\Extensions;
 
+use BiuradPHP\DependencyInjection\Concerns\ExtensionDefinitionsHelper;
 use BiuradPHP\DependencyInjection\Interfaces\ContainerAwareInterface;
 
 class ContainerAwareExtension extends \BiuradPHP\DependencyInjection\CompilerExtension
@@ -29,9 +30,12 @@ class ContainerAwareExtension extends \BiuradPHP\DependencyInjection\CompilerExt
 	{
 		$builder = $this->getContainerBuilder();
 
+		$definitionsHelper = new ExtensionDefinitionsHelper($this->compiler);
+		$definitions = $definitionsHelper->getServiceDefinitionsFromDefinitions($builder->findByType(ContainerAwareInterface::class));
+
 		// Register as services
-		foreach ($builder->findByType(ContainerAwareInterface::class) as $service) {
-			$service->addSetup('setContainer');
+		foreach ($definitions as $definition) {
+			$definition->addSetup('setContainer');
 		}
 	}
 

@@ -20,8 +20,8 @@ namespace BiuradPHP\DependencyInjection\Concerns;
 use Nette\Schema;
 use Nette, Nette\DI\Extensions;
 use BiuradPHP\DependencyInjection\Config;
-use Nette\DI\CompilerExtension, Nette\DI\DependencyChecker;
 use Nette\DI\Compiler as NetteCompiler;
+use Nette\DI\CompilerExtension, Nette\DI\DependencyChecker;
 use BiuradPHP\DependencyInjection\Exceptions\InvalidConfigurationException;
 use BiuradPHP\DependencyInjection\Interfaces\CompilerPassInterface;
 
