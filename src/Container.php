@@ -24,7 +24,6 @@ use BiuradPHP\DependencyInjection\Interfaces\FactoryInterface;
 use BiuradPHP\DependencyInjection\Exceptions\MissingServiceException;
 use BiuradPHP\DependencyInjection\Exceptions\ContainerResolutionException;
 use BiuradPHP\DependencyInjection\Exceptions\ParameterNotFoundException;
-use Nette\DI\ServiceCreationException;
 
 use function BiuradPHP\Support\array_get;
 
@@ -42,7 +41,7 @@ use function BiuradPHP\Support\array_get;
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  * @license BSD-3-Clause
  */
-class Container extends NetteContainer implements \ArrayAccess, FactoryInterface
+class Container extends NetteContainer implements \ArrayAccess, \Serializable, FactoryInterface
 {
     /** @var object[] service name => instance */
     private $instances = [];
@@ -461,8 +460,6 @@ class Container extends NetteContainer implements \ArrayAccess, FactoryInterface
         // this will be handled in a recursive way...
         try {
             $instances = $this->autowireArguments($constructor, $args);
-        } catch (ServiceCreationException $e) {
-            return $this->createInstance($class, array_values($args));
         } catch (MissingServiceException $e) {
             // Resolve default pararamters on class, if paramter was not given and
             // default paramter exists, why not let's use it.
@@ -627,6 +624,51 @@ class Container extends NetteContainer implements \ArrayAccess, FactoryInterface
         $this->callInjects($instance); // Call injectors on the new class instance.
 
         return $instance;
+    }
+
+    public function __serialize(): array
+    {
+        return [
+            'parameters' => $this->parameters,
+            'types' => $this->types,
+            'aliases' => $this->aliases,
+            'tags' => $this->tags,
+            'wiring' => $this->wiring,
+            'instances' => $this->instances,
+            'methods' => $this->methods,
+            'creating' => $this->creating,
+        ];
+    }
+
+    /**
+     * @internal
+     */
+    final public function serialize(): string
+    {
+        return serialize($this->__serialize());
+    }
+
+    public function __unserialize(array $data): void
+    {
+        $this->parameters = $data['parameters'];
+        $this->types = $data['types'];
+        $this->aliases = $data['aliases'];
+        $this->tags = $data['tags'];
+        $this->wiring = $data['wiring'];
+        $this->instances = $data['instances'];
+        $this->methods = $data['methods'];
+
+        if (isset($data['creating'])) {
+            $this->creating = $data['creating'];
+        }
+    }
+
+    /**
+     * @internal
+     */
+    final public function unserialize($serialized)
+    {
+        $this->__unserialize(unserialize($serialized));
     }
 
     /**

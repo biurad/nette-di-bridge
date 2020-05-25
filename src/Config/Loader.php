@@ -26,7 +26,7 @@ use Nette\Utils\Validators;
 class Loader extends ConfigLoader
 {
     private const INCLUDES_KEY = 'includes';
-    public const ENV_REGEX = '/%env\([a-zA-Z0-9\|\-:_]+\)%/';
+    public const ENV_REGEX = '/s*%env\([a-zA-Z0-9\|\-:_]+\)%*/s';
 
 	private $adapters = [
 		'php'   => Adapters\PhpAdapter::class,

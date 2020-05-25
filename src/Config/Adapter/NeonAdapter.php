@@ -110,9 +110,6 @@ final class NeonAdapter implements Nette\DI\Config\Adapter
      */
     private function parseParameters(string $contents): string
     {
-        // So yaml syntax could work properly
-        $contents = str_replace('~', 'null', $contents);
-
         // Grab any parameter we might need to send
         $matches = [];
         $default = null;
@@ -120,8 +117,7 @@ final class NeonAdapter implements Nette\DI\Config\Adapter
         if (preg_match(Loader::ENV_REGEX, $contents, $matches)) {
             $contents = preg_replace_callback(Loader::ENV_REGEX, function ($matches) use ($default) {
                 // Remove the env() and spaces to we have just the parameter left
-                $key = ! empty($matches) ? trim($matches[0], '%env()% ') : [];
-
+                $key = ! empty($matches) ? substr(trim($matches[0], '%()% '), 4) : '';
                 if (strpos($key, '|') !== false) {
                     [$key, $default] = explode('|', $key);
                 }
@@ -130,7 +126,8 @@ final class NeonAdapter implements Nette\DI\Config\Adapter
             }, $contents);
         }
 
-        return $contents;
+        // So yaml syntax could work properly
+        return str_replace(['~', '\'false\'', '\'true\''], ['null', 'false', 'true'], $contents);
     }
 
 

@@ -17,7 +17,7 @@
 
 namespace BiuradPHP\DependencyInjection\Config\Adapter;
 
-use BiuradPHP\Loader\Adapters\XmlAdapter as BiuradPHPXmlAdapter;
+use BiuradPHP\Loader\Files\Adapters\XmlAdapter as BiuradPHPXmlAdapter;
 use Nette;
 
 /**

@@ -17,7 +17,7 @@
 
 namespace BiuradPHP\DependencyInjection\Config\Adapter;
 
-use BiuradPHP\Loader\Adapters\IniAdapter as BiuradPHPIniAdapter;
+use BiuradPHP\Loader\Files\Adapters\IniAdapter as BiuradPHPIniAdapter;
 use Nette;
 
 /**
