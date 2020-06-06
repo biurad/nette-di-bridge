@@ -24,6 +24,7 @@ use Nette\DI\Compiler as NetteCompiler;
 use Nette\DI\CompilerExtension, Nette\DI\DependencyChecker;
 use BiuradPHP\DependencyInjection\Exceptions\InvalidConfigurationException;
 use BiuradPHP\DependencyInjection\Interfaces\CompilerPassInterface;
+use BiuradPHP\DependencyInjection\Interfaces\PassCompilerAwareInterface;
 
 /**
  * DI container compiler.
@@ -149,6 +150,12 @@ class Compiler extends NetteCompiler
      */
     public function getCompilerPasses(): array
     {
+        // Backward compatability for Nette
+        foreach ($this->extensions as $name => $extension) {
+            if ($extension instanceof PassCompilerAwareInterface) {
+                $extension->addCompilerPasses($this);
+            }
+        }
         return $this->passConfig->getPasses();
     }
 

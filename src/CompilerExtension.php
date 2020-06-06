@@ -18,11 +18,9 @@
 namespace BiuradPHP\DependencyInjection;
 
 use Nette;
-use Nette\DI\Compiler;
 use BiuradPHP\DependencyInjection\Config;
 use Nette\DI\CompilerExtension as NetteCompilerExtension;
 use BiuradPHP\DependencyInjection\Concerns\ExtensionDefinitionsHelper;
-use BiuradPHP\DependencyInjection\Interfaces\PassCompilerAwareInterface;
 
 /**
  * Configurator compiling extension.
@@ -34,7 +32,7 @@ abstract class CompilerExtension extends NetteCompilerExtension
 {
     /** @var ExtensionDefinitionsHelper|null */
     private $helper;
-    
+
     /**
      * @internal do not use this function
      */
@@ -42,18 +40,6 @@ abstract class CompilerExtension extends NetteCompilerExtension
     {
         return $this->name;
     }
-
-    /** @return static */
-	public function setCompiler(Compiler $compiler, string $name)
-	{
-        $compiler = parent::setCompiler($compiler, $name);
-
-        if ($this instanceof PassCompilerAwareInterface) {
-            $this->addCompilerPasses($this->compiler);
-        }
-
-        return $compiler;
-	}
 
     /**
      * ContainerBuilder is a DI container that provides an API to easily describe services.
@@ -70,7 +56,7 @@ abstract class CompilerExtension extends NetteCompilerExtension
      *
      * @return array An array of configuration or false if not found
      */
-    public function getExtensionConfig(string $name)
+    protected function getExtensionConfig(string $name)
     {
         try {
             $extensionConfigs = $this->compiler->getExtension($name);
@@ -91,12 +77,12 @@ abstract class CompilerExtension extends NetteCompilerExtension
 
 	protected function getHelper(): ExtensionDefinitionsHelper
 	{
-		if ($this->helper === null) {
-			$this->helper = new ExtensionDefinitionsHelper($this->compiler);
-		}
+        if ($this->helper === null) {
+            $this->helper = new ExtensionDefinitionsHelper($this->compiler);
+        }
 
-		return $this->helper;
-	}
+        return $this->helper;
+    }
 
     /**
      * Processes configuration data. Intended to be overridden by descendant.
