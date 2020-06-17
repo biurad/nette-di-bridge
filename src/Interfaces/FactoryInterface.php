@@ -1,27 +1,28 @@
 <?php
 
+declare(strict_types=1);
+
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of BiuradPHP opensource projects.
  *
- * PHP version 7 and above required
- *
- * @category  DependencyInjection
+ * PHP version 7.1 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/dependencyinjection
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace BiuradPHP\DependencyInjection\Interfaces;
 
-use Psr\Container\ContainerInterface;
 use BiuradPHP\DependencyInjection\Container;
+use BiuradPHP\DependencyInjection\Exceptions\ContainerResolutionException;
 use BiuradPHP\DependencyInjection\Exceptions\MissingServiceException;
 use BiuradPHP\DependencyInjection\Exceptions\ParameterNotFoundException;
-use BiuradPHP\DependencyInjection\Exceptions\ContainerResolutionException;
+use Psr\Container\ContainerInterface;
+use Throwable;
 
 interface FactoryInterface extends ContainerInterface
 {
@@ -37,9 +38,9 @@ interface FactoryInterface extends ContainerInterface
      *
      * @param string $name The parameter name
      *
-     * @return mixed The parameter value
-     *
      * @throws ParameterNotFoundException if the parameter is not defined
+     *
+     * @return mixed The parameter value
      */
     public function getParameter(string $name);
 
@@ -53,9 +54,9 @@ interface FactoryInterface extends ContainerInterface
     public function hasParameter($name);
 
     /**
-	 * Removes the service from the container.
-	 */
-	public function removeService(string $name): void;
+     * Removes the service from the container.
+     */
+    public function removeService(string $name): void;
 
     /**
      * Adds the service to the container.
@@ -81,9 +82,9 @@ interface FactoryInterface extends ContainerInterface
     /**
      * Creates new instance of the service.
      *
-     * @return object
-     *
      * @throws MissingServiceException
+     *
+     * @return object
      */
     public function createService(string $name, array $args = []);
 
@@ -92,9 +93,9 @@ interface FactoryInterface extends ContainerInterface
      *
      * @param bool $throw exception if service doesn't exist?
      *
-     * @return object|null service
-     *
      * @throws MissingServiceException
+     *
+     * @return null|object service
      */
     public function getByType(string $type, bool $throw = true);
 
@@ -124,9 +125,9 @@ interface FactoryInterface extends ContainerInterface
     /**
      * Creates new instance using autowiring.
      *
-     * @return object
-     *
      * @throws ContainerResolutionException
+     *
+     * @return object
      */
     public function createInstance(string $class, array $args = []);
 
@@ -152,7 +153,7 @@ interface FactoryInterface extends ContainerInterface
      * supported by this method.
      *
      * @param string              $abstract
-     * @param Closure|string|null $concrete
+     * @param null|Closure|string $concrete
      */
     public function bind(string $abstract, $concrete = null): Container;
 
@@ -161,7 +162,7 @@ interface FactoryInterface extends ContainerInterface
      *
      * @param callable|string $callback
      * @param array           $parameters
-     * @param string|null     $defaultMethod
+     * @param null|string     $defaultMethod
      *
      * @return mixed
      */
@@ -175,7 +176,7 @@ interface FactoryInterface extends ContainerInterface
      * @param string $alias
      * @param array  $parameters parameters to construct new class
      *
-     * @return mixed|object|null
+     * @return null|mixed|object
      */
     public function make(string $alias, ...$parameters);
 
@@ -194,9 +195,10 @@ interface FactoryInterface extends ContainerInterface
      *
      * @param array    $bindings
      * @param callable $scope
-     * @return mixed
      *
-     * @throws \Throwable
+     * @throws Throwable
+     *
+     * @return mixed
      */
     public function runScope(array $bindings, callable $scope);
 }

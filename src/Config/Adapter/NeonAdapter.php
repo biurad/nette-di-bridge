@@ -1,104 +1,109 @@
 <?php
 
+declare(strict_types=1);
+
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of BiuradPHP opensource projects.
  *
- * PHP version 7 and above required
- *
- * @category  DependencyInjection
+ * PHP version 7.1 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/dependencyinjection
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace BiuradPHP\DependencyInjection\Config\Adapter;
 
+use BiuradPHP\DependencyInjection\Config\Loader;
 use Nette;
 use Nette\DI\Config\Helpers;
 use Nette\DI\Definitions\Reference;
 use Nette\DI\Definitions\Statement;
 use Nette\Neon;
-use BiuradPHP\DependencyInjection\Config\Loader;
 
 /**
  * Reading and generating NEON files.
  */
 final class NeonAdapter implements Nette\DI\Config\Adapter
 {
-	use Nette\SmartObject;
+    use Nette\SmartObject;
 
-	private const PREVENT_MERGING_SUFFIX = '!';
+    private const PREVENT_MERGING_SUFFIX = '!';
 
+    /**
+     * Reads configuration from NEON file.
+     */
+    public function load(string $file): array
+    {
+        $contents = $this->parseParameters(\file_get_contents($file));
 
-	/**
-	 * Reads configuration from NEON file.
-	 */
-	public function load(string $file): array
-	{
-        $contents = $this->parseParameters(file_get_contents($file));
+        return $this->process((array) Neon\Neon::decode($contents));
+    }
 
-		return $this->process((array) Neon\Neon::decode($contents));
-	}
+    /** @throws Nette\InvalidStateException */
+    public function process(array $arr): array
+    {
+        $res = [];
 
+        foreach ($arr as $key => $val) {
+            if (\is_string($key) && \substr($key, -1) === self::PREVENT_MERGING_SUFFIX) {
+                if (!\is_array($val) && $val !== null) {
+                    throw new Nette\DI\InvalidConfigurationException(
+                        "Replacing operator is available only for arrays, item '$key' is not array."
+                    );
+                }
+                $key                           = \substr($key, 0, -1);
+                $val[Helpers::PREVENT_MERGING] = true;
+            }
 
-	/** @throws Nette\InvalidStateException */
-	public function process(array $arr): array
-	{
-		$res = [];
-		foreach ($arr as $key => $val) {
-			if (is_string($key) && substr($key, -1) === self::PREVENT_MERGING_SUFFIX) {
-				if (!is_array($val) && $val !== null) {
-					throw new Nette\DI\InvalidConfigurationException("Replacing operator is available only for arrays, item '$key' is not array.");
-				}
-				$key = substr($key, 0, -1);
-				$val[Helpers::PREVENT_MERGING] = true;
-			}
+            if (\is_array($val)) {
+                $val = $this->process($val);
+            } elseif ($val instanceof Neon\Entity) {
+                if ($val->value === Neon\Neon::CHAIN) {
+                    $tmp = null;
 
-			if (is_array($val)) {
-				$val = $this->process($val);
+                    foreach ($this->process($val->attributes) as $st) {
+                        $tmp = new Statement(
+                            $tmp === null
+                                ? $st->getEntity()
+                                : [$tmp, \ltrim(\implode('::', (array) $st->getEntity()), ':')],
+                            $st->arguments
+                        );
+                    }
+                    $val = $tmp;
+                } else {
+                    $tmp = $this->process([$val->value]);
 
-			} elseif ($val instanceof Neon\Entity) {
-				if ($val->value === Neon\Neon::CHAIN) {
-					$tmp = null;
-					foreach ($this->process($val->attributes) as $st) {
-						$tmp = new Statement(
-							$tmp === null ? $st->getEntity() : [$tmp, ltrim(implode('::', (array) $st->getEntity()), ':')],
-							$st->arguments
-						);
-					}
-					$val = $tmp;
-				} else {
-					$tmp = $this->process([$val->value]);
-					if (is_string($tmp[0]) && strpos($tmp[0], '?') !== false) {
-						trigger_error('Operator ? is deprecated in config files.', E_USER_DEPRECATED);
-					}
-					$val = new Statement($tmp[0], $this->process($val->attributes));
-				}
-			}
-			$res[$key] = $val;
-		}
-		return $res;
-	}
+                    if (\is_string($tmp[0]) && \strpos($tmp[0], '?') !== false) {
+                        \trigger_error('Operator ? is deprecated in config files.', \E_USER_DEPRECATED);
+                    }
+                    $val = new Statement($tmp[0], $this->process($val->attributes));
+                }
+            }
+            $res[$key] = $val;
+        }
 
+        return $res;
+    }
 
-	/**
-	 * Generates configuration in NEON format.
-	 */
-	public function dump(array $data): string
-	{
-		array_walk_recursive(
-			$data,
-			function (&$val): void {
-				if ($val instanceof Statement) {
-					$val = self::statementToEntity($val);
-				}
-			}
-		);
-		return "# generated by Nette\n\n" . Neon\Neon::encode($data, Neon\Neon::BLOCK);
+    /**
+     * Generates configuration in NEON format.
+     */
+    public function dump(array $data): string
+    {
+        \array_walk_recursive(
+            $data,
+            function (&$val): void {
+                if ($val instanceof Statement) {
+                    $val = self::statementToEntity($val);
+                }
+            }
+        );
+
+        return "# generated by Nette\n\n" . Neon\Neon::encode($data, Neon\Neon::BLOCK);
     }
 
     /**
@@ -114,54 +119,62 @@ final class NeonAdapter implements Nette\DI\Config\Adapter
         $matches = [];
         $default = null;
 
-        if (preg_match(Loader::ENV_REGEX, $contents, $matches)) {
-            $contents = preg_replace_callback(Loader::ENV_REGEX, function ($matches) use ($default) {
+        if (\preg_match(Loader::ENV_REGEX, $contents, $matches)) {
+            $contents = \preg_replace_callback(Loader::ENV_REGEX, function ($matches) use ($default) {
                 // Remove the env() and spaces to we have just the parameter left
-                $key = ! empty($matches) ? substr(trim($matches[0], '%()% '), 4) : '';
-                if (strpos($key, '|') !== false) {
-                    [$key, $default] = explode('|', $key);
+                $key = !empty($matches) ? \substr(\trim($matches[0], '%()% '), 4) : '';
+
+                if (\strpos($key, '|') !== false) {
+                    [$key, $default] = \explode('|', $key);
                 }
 
-                return $_ENV[$key] ?? getenv($key) ? $_SERVER[$key] : $default;
+                return $_ENV[$key] ?? \getenv($key) ? $_SERVER[$key] : $default;
             }, $contents);
         }
 
         // So yaml syntax could work properly
-        return str_replace(['~', '\'false\'', '\'true\''], ['null', 'false', 'true'], $contents);
+        return \str_replace(
+            ['~', '\'false\'', '\'true\'', '"false"', '"true"'],
+            ['null', 'false', 'true'],
+            $contents
+        );
     }
 
+    private static function statementToEntity(Statement $val): Neon\Entity
+    {
+        \array_walk_recursive(
+            $val->arguments,
+            function (&$val): void {
+                if ($val instanceof Statement) {
+                    $val = self::statementToEntity($val);
+                } elseif ($val instanceof Reference) {
+                    $val = '@' . $val->getValue();
+                }
+            }
+        );
 
-	private static function statementToEntity(Statement $val): Neon\Entity
-	{
-		array_walk_recursive(
-			$val->arguments,
-			function (&$val): void {
-				if ($val instanceof Statement) {
-					$val = self::statementToEntity($val);
-				} elseif ($val instanceof Reference) {
-					$val = '@' . $val->getValue();
-				}
-			}
-		);
+        $entity = $val->getEntity();
 
-		$entity = $val->getEntity();
-		if ($entity instanceof Reference) {
-			$entity = '@' . $entity->getValue();
-		} elseif (is_array($entity)) {
-			if ($entity[0] instanceof Statement) {
-				return new Neon\Entity(
-					Neon\Neon::CHAIN,
-					[
-						self::statementToEntity($entity[0]),
-						new Neon\Entity('::' . $entity[1], $val->arguments),
-					]
-				);
-			} elseif ($entity[0] instanceof Reference) {
-				$entity = '@' . $entity[0]->getValue() . '::' . $entity[1];
-			} elseif (is_string($entity[0])) {
-				$entity = $entity[0] . '::' . $entity[1];
-			}
-		}
-		return new Neon\Entity($entity, $val->arguments);
-	}
+        if ($entity instanceof Reference) {
+            $entity = '@' . $entity->getValue();
+        } elseif (\is_array($entity)) {
+            if ($entity[0] instanceof Statement) {
+                return new Neon\Entity(
+                    Neon\Neon::CHAIN,
+                    [
+                        self::statementToEntity($entity[0]),
+                        new Neon\Entity('::' . $entity[1], $val->arguments),
+                    ]
+                );
+            }
+
+            if ($entity[0] instanceof Reference) {
+                $entity = '@' . $entity[0]->getValue() . '::' . $entity[1];
+            } elseif (\is_string($entity[0])) {
+                $entity = $entity[0] . '::' . $entity[1];
+            }
+        }
+
+        return new Neon\Entity($entity, $val->arguments);
+    }
 }

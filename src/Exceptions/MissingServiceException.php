@@ -1,18 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of BiuradPHP opensource projects.
  *
- * PHP version 7 and above required
- *
- * @category  DependencyInjection
+ * PHP version 7.1 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/dependencyinjection
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace BiuradPHP\DependencyInjection\Exceptions;
@@ -24,13 +24,14 @@ use Psr\Container\NotFoundExceptionInterface;
  */
 class MissingServiceException extends \Nette\DI\MissingServiceException implements NotFoundExceptionInterface
 {
-    public static function dependencyForService(string $dependency, string $service) : self
+    public static function dependencyForService(string $dependency, string $service): self
     {
-        return new self(sprintf(
+        return new self(\sprintf(
             'Missing dependency "%s" for service "%2$s"; please make sure it is'
             . ' registered in your container. Refer to the %2$s class and/or its'
             . ' factory to determine what the service should return.',
-            $dependency, $service
+            $dependency,
+            $service
         ));
     }
 }

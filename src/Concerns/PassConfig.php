@@ -1,18 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of BiuradPHP opensource projects.
  *
- * PHP version 7 and above required
- *
- * @category  DependencyInjection
+ * PHP version 7.1 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/dependencyinjection
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace BiuradPHP\DependencyInjection\Concerns;
@@ -29,11 +29,14 @@ use BiuradPHP\DependencyInjection\Interfaces\CompilerPassInterface;
  */
 class PassConfig
 {
-    const TYPE_BEFORE_OPTIMIZATION = 'beforeOptimization';
-    const TYPE_OPTIMIZE = 'optimization';
+    public const TYPE_BEFORE_OPTIMIZATION = 'beforeOptimization';
+
+    public const TYPE_OPTIMIZE = 'optimization';
 
     private $beforeOptimizationPasses = [];
+
     private $optimizationPasses = [];
+
     private $compiler;
 
     public function __construct(Compiler $compiler)
@@ -54,15 +57,16 @@ class PassConfig
      */
     public function getPasses()
     {
-        return array_map(
+        return \array_map(
             function (CompilerPassInterface $pass) {
                 return $pass instanceof AbstractCompilerPass
                     ? $pass->setCompiler($this->compiler) : $pass;
             },
-            array_merge(
-            $this->getBeforeOptimizationPasses(),
-            $this->getOptimizationPasses()
-        ));
+            \array_merge(
+                $this->getBeforeOptimizationPasses(),
+                $this->getOptimizationPasses()
+            )
+        );
     }
 
     /**
@@ -70,11 +74,15 @@ class PassConfig
      *
      * @throws InvalidArgumentException when a pass type doesn't exist
      */
-    public function addPass(CompilerPassInterface $pass, string $type = self::TYPE_BEFORE_OPTIMIZATION, int $priority = 0)
-    {
-        $property = $type.'Passes';
+    public function addPass(
+        CompilerPassInterface $pass,
+        string $type = self::TYPE_BEFORE_OPTIMIZATION,
+        int $priority = 0
+    ): void {
+        $property = $type . 'Passes';
+
         if (!isset($this->$property)) {
-            throw new \InvalidArgumentException(sprintf('Invalid type "%s".', $type));
+            throw new \InvalidArgumentException(\sprintf('Invalid type "%s".', $type));
         }
 
         $passes = &$this->$property;
@@ -110,7 +118,7 @@ class PassConfig
      *
      * @param CompilerPassInterface[] $passes
      */
-    public function setBeforeOptimizationPasses(array $passes)
+    public function setBeforeOptimizationPasses(array $passes): void
     {
         $this->beforeOptimizationPasses = [$passes];
     }
@@ -120,7 +128,7 @@ class PassConfig
      *
      * @param CompilerPassInterface[] $passes
      */
-    public function setOptimizationPasses(array $passes)
+    public function setOptimizationPasses(array $passes): void
     {
         $this->optimizationPasses = [$passes];
     }
@@ -138,9 +146,9 @@ class PassConfig
             return [];
         }
 
-        krsort($passes);
+        \krsort($passes);
 
         // Flatten the array
-        return array_merge(...$passes);
+        return \array_merge(...$passes);
     }
 }

@@ -1,28 +1,31 @@
 <?php
 
+declare(strict_types=1);
+
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of BiuradPHP opensource projects.
  *
- * PHP version 7 and above required
- *
- * @category  DependencyInjection
+ * PHP version 7.1 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/dependencyinjection
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace BiuradPHP\DependencyInjection\Concerns;
 
-use Nette\DI\Definitions;
-use Nette\PhpGenerator as Php;
-use Nette, Nette\DI\ContainerBuilder;
 use BiuradPHP\DependencyInjection\Container;
-use Nette\DI\PhpGenerator as NettePhpGenerator;
 use BiuradPHP\DependencyInjection\Exceptions\ServiceCreationException;
+use Exception;
+use Nette;
+use Nette\DI\ContainerBuilder;
+use Nette\DI\Definitions;
+use Nette\DI\PhpGenerator as NettePhpGenerator;
+use Nette\PhpGenerator as Php;
+use Throwable;
 
 /**
  * Container PHP code generator.
@@ -48,13 +51,15 @@ class PhpGenerator extends NettePhpGenerator
 
     /**
      * Generates PHP classes. First class is the container.
+     *
      * @param string $className
+     *
      * @return Nette\PhpGenerator\ClassType
      */
     public function generate(string $className): Nette\PhpGenerator\ClassType
     {
         $this->className = $className;
-        $class = new Nette\PhpGenerator\ClassType($this->className);
+        $class           = new Nette\PhpGenerator\ClassType($this->className);
         $class->setExtends(Container::class);
         $class->addMethod('__construct')
             ->addBody('parent::__construct($params);')
@@ -68,7 +73,7 @@ class PhpGenerator extends NettePhpGenerator
         }
 
         $definitions = $this->builder->getDefinitions();
-        ksort($definitions);
+        \ksort($definitions);
 
         foreach ($definitions as $def) {
             $class->addMember($this->generateMethod($def));
@@ -86,8 +91,10 @@ class PhpGenerator extends NettePhpGenerator
 
     /**
      * @param Nette\PhpGenerator\ClassType $class
+     *
+     * @throws Throwable
+     *
      * @return string
-     * @throws \Throwable
      */
     public function toString(Nette\PhpGenerator\ClassType $class): string
     {
@@ -103,54 +110,56 @@ declare(strict_types=1);
  * global container as fallback.
  *
  */
-'.(string) $class;
+' . (string) $class;
     }
 
     public function generateMethod(Definitions\Definition $def): Nette\PhpGenerator\Method
     {
-        $name = $def->getName();
-        $comment = "This method is an instance of %s.\n\nThe instance can be accessed by it's name in lower case,";
+        $name     = $def->getName();
+        $comment  = "This method is an instance of %s.\n\nThe instance can be accessed by it's name in lower case,";
         $comment2 = 'thus `%s`, using container get or make methods.';
+
         try {
             $method = new Nette\PhpGenerator\Method(Container::getMethodName($name));
             $method->setProtected();
-            $method->setComment(sprintf($comment."\n".$comment2, $def->getType(), $name));
+            $method->setComment(\sprintf($comment . "\n" . $comment2, $def->getType(), $name));
             $method->setReturnType($def->getType());
             $def->generateMethod($method, $this);
 
             return $method;
-        } catch (\Exception $e) {
-            throw new ServiceCreationException("Service '$name': ".$e->getMessage(), 0, $e);
+        } catch (Exception $e) {
+            throw new ServiceCreationException("Service '$name': " . $e->getMessage(), 0, $e);
         }
     }
 
     /**
-	 * Formats PHP statement.
-	 * @internal
-	 */
-	public function formatPhp(string $statement, array $args): string
-	{
-		array_walk_recursive($args, function (&$val): void {
-			if ($val instanceof Definitions\Statement) {
-				$val = new Php\Literal($this->formatStatement($val));
+     * Formats PHP statement.
+     *
+     * @internal
+     */
+    public function formatPhp(string $statement, array $args): string
+    {
+        \array_walk_recursive($args, function (&$val): void {
+            if ($val instanceof Definitions\Statement) {
+                $val = new Php\Literal($this->formatStatement($val));
+            } elseif ($val instanceof Definitions\Reference) {
+                $name = $val->getValue();
 
-			} elseif ($val instanceof Definitions\Reference) {
-				$name = $val->getValue();
-				if ($val->isSelf()) {
-					$val = new Php\Literal('$service');
-				} elseif ($name === ContainerBuilder::THIS_CONTAINER) {
-					$val = new Php\Literal('$this');
-				} else {
-					$val = ContainerBuilder::literal('$this->get(?)', [$name]);
-				}
-			}
+                if ($val->isSelf()) {
+                    $val = new Php\Literal('$service');
+                } elseif ($name === ContainerBuilder::THIS_CONTAINER) {
+                    $val = new Php\Literal('$this');
+                } else {
+                    $val = ContainerBuilder::literal('$this->get(?)', [$name]);
+                }
+            }
         });
 
-		return (new Nette\PhpGenerator\Dumper)->format($statement, ...$args);
+        return (new Nette\PhpGenerator\Dumper())->format($statement, ...$args);
     }
 
     public function getClassName(): ?string
-	{
-		return $this->className;
-	}
+    {
+        return $this->className;
+    }
 }

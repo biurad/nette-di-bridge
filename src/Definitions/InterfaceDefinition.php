@@ -1,142 +1,147 @@
 <?php
 
+declare(strict_types=1);
+
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of BiuradPHP opensource projects.
  *
- * PHP version 7 and above required
- *
- * @category  DependencyInjection
+ * PHP version 7.1 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/dependencyinjection
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace BiuradPHP\DependencyInjection\Definitions;
 
 use Nette;
-use Nette\DI\ServiceCreationException;
 use Nette\DI\Definitions;
+use Nette\DI\ServiceCreationException;
 
 /**
  * Definition of standard service.
  */
 final class InterfaceDefinition extends Definitions\Definition
 {
-	/** @var Definitions\Definition|Definitions\ServiceDefinition */
-	private $resultDefinition;
+    /** @var Definitions\Definition|Definitions\ServiceDefinition */
+    private $resultDefinition;
 
-	public function __construct()
-	{
-        $this->resultDefinition = new Definitions\ServiceDefinition;
-	}
+    public function __construct()
+    {
+        $this->resultDefinition = new Definitions\ServiceDefinition();
+    }
 
-	/** @return static */
-	public function setImplement(string $type)
-	{
-		if (!interface_exists($type)) {
-			throw new Nette\InvalidArgumentException("Service '{$this->getName()}': Interface '$type' not found.");
+    public function __clone()
+    {
+        parent::__clone();
+        $this->resultDefinition = \unserialize(\serialize($this->resultDefinition));
+    }
+
+    /** @return static */
+    public function setImplement(string $type)
+    {
+        if (!\interface_exists($type)) {
+            throw new Nette\InvalidArgumentException("Service '{$this->getName()}': Interface '$type' not found.");
         }
-        
+
         $this->resultDefinition->setName($this->getName());
-		return parent::setType($type);
-	}
 
-	public function getImplement(): ?string
-	{
-		return $this->getType();
-	}
+        return parent::setType($type);
+    }
 
+    public function getImplement(): ?string
+    {
+        return $this->getType();
+    }
 
-	final public function getResultType(): ?string
-	{
-		return $this->resultDefinition->getType();
-	}
+    final public function getResultType(): ?string
+    {
+        return $this->resultDefinition->getType();
+    }
 
-	/** @return static */
-	public function setResultDefinition(Definitions\Definition $definition)
-	{
-		$this->resultDefinition = $definition;
-		return $this;
-	}
+    /** @return static */
+    public function setResultDefinition(Definitions\Definition $definition)
+    {
+        $this->resultDefinition = $definition;
 
-	/** @return Definitions\ServiceDefinition */
-	public function getResultDefinition(): Definitions\Definition
-	{
-		return $this->resultDefinition;
-	}
+        return $this;
+    }
 
-	public function resolveType(Nette\DI\Resolver $resolver): void
-	{
-		$resultDef = $this->resultDefinition;
-		try {
-			$resolver->resolveDefinition($resultDef);
-			return;
-		} catch (ServiceCreationException $e) {
-		}
+    /** @return Definitions\ServiceDefinition */
+    public function getResultDefinition(): Definitions\Definition
+    {
+        return $this->resultDefinition;
+    }
 
-		if (!$resultDef->getType()) {
-			$interface = $this->getType();
-			if (!$interface || !interface_exists($interface)) {
-				throw new ServiceCreationException('Type is missing in definition of service.');
+    public function resolveType(Nette\DI\Resolver $resolver): void
+    {
+        $resultDef = $this->resultDefinition;
+
+        try {
+            $resolver->resolveDefinition($resultDef);
+
+            return;
+        } catch (ServiceCreationException $e) {
+        }
+
+        if (!$resultDef->getType()) {
+            $interface = $this->getType();
+
+            if (!$interface || !\interface_exists($interface)) {
+                throw new ServiceCreationException('Type is missing in definition of service.');
             }
-            
+
             $resultDef->setType($interface);
         }
 
-		$resolver->resolveDefinition($resultDef);
-	}
+        $resolver->resolveDefinition($resultDef);
+    }
 
-	public function complete(Nette\DI\Resolver $resolver): void
-	{
-		$resultDef = $this->resultDefinition;
+    public function complete(Nette\DI\Resolver $resolver): void
+    {
+        $resultDef = $this->resultDefinition;
 
-		if ($resultDef instanceof Definitions\ServiceDefinition) {
-			if ($resultDef->getEntity() instanceof Definitions\Reference && !$resultDef->getFactory()->arguments) {
-				$resultDef->setFactory([ // render as $container->createMethod()
-					new Definitions\Reference(Nette\DI\ContainerBuilder::THIS_CONTAINER),
-					Nette\DI\Container::getMethodName($resultDef->getEntity()->getValue()),
-				]);
-			}
-		}
+        if ($resultDef instanceof Definitions\ServiceDefinition) {
+            if ($resultDef->getEntity() instanceof Definitions\Reference && !$resultDef->getFactory()->arguments) {
+                $resultDef->setFactory([ // render as $container->createMethod()
+                    new Definitions\Reference(Nette\DI\ContainerBuilder::THIS_CONTAINER),
+                    Nette\DI\Container::getMethodName($resultDef->getEntity()->getValue()),
+                ]);
+            }
+        }
 
-		$resolver->completeDefinition($resultDef);
-	}
+        $resolver->completeDefinition($resultDef);
+    }
 
-	public function generateMethod(Nette\PhpGenerator\Method $method, Nette\DI\PhpGenerator $generator): void
-	{
-        $class = (new Nette\PhpGenerator\ClassType)
+    public function generateMethod(Nette\PhpGenerator\Method $method, Nette\DI\PhpGenerator $generator): void
+    {
+        $class = (new Nette\PhpGenerator\ClassType())
             ->addImplement($this->getType());
-            
-        if (! is_string($entity = $this->resultDefinition->getEntity())) {
-            throw new ServiceCreationException(sprintf('Type entity must be a string of interface, \'%s\' given', gettype($entity)));
+
+        if (!\is_string($entity = $this->resultDefinition->getEntity())) {
+            throw new ServiceCreationException(
+                \sprintf('Type entity must be a string of interface, \'%s\' given', \gettype($entity))
+            );
         }
 
         $code = new Definitions\Statement('class', $this->resultDefinition->getFactory()->arguments);
         $code = $generator->formatStatement($code);
 
-        
         $method->setBody('$service = ' . "{$code} " . $class->addExtend($entity) . ';');
 
         if (!empty($this->resultDefinition->getSetup())) {
             $setups = '';
-            foreach($this->resultDefinition->getSetup() as $setup) {
-                $setups .= $generator->formatStatement($setup). ";\n";
+
+            foreach ($this->resultDefinition->getSetup() as $setup) {
+                $setups .= $generator->formatStatement($setup) . ";\n";
             }
 
             $method->addBody("\n" . $setups);
         }
 
         $method->addBody('return $service;');
-
-	}
-
-	public function __clone()
-	{
-		parent::__clone();
-		$this->resultDefinition = unserialize(serialize($this->resultDefinition));
-	}
+    }
 }

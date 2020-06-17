@@ -1,29 +1,39 @@
 <?php
 
+declare(strict_types=1);
+
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of BiuradPHP opensource projects.
  *
- * PHP version 7 and above required
- *
- * @category  DependencyInjection
+ * PHP version 7.1 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/dependencyinjection
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace BiuradPHP\DependencyInjection;
 
-use Nette, Nette\Utils\Callback;
-use Nette\DI\Container as NetteContainer;
-use Nette\Utils\Validators, BiuradPHP\Support\BoundMethod;
-use BiuradPHP\DependencyInjection\Interfaces\FactoryInterface;
-use BiuradPHP\DependencyInjection\Exceptions\MissingServiceException;
+use ArrayAccess;
 use BiuradPHP\DependencyInjection\Exceptions\ContainerResolutionException;
+use BiuradPHP\DependencyInjection\Exceptions\MissingServiceException;
 use BiuradPHP\DependencyInjection\Exceptions\ParameterNotFoundException;
+use BiuradPHP\DependencyInjection\Interfaces\FactoryInterface;
+use BiuradPHP\Support\BoundMethod;
+use Closure;
+use Nette;
+use Nette\DI\Container as NetteContainer;
+use Nette\Utils\Callback;
+use Nette\Utils\Validators;
+use ReflectionClass;
+use ReflectionFunction;
+use ReflectionFunctionAbstract;
+use ReflectionMethod;
+use ReflectionType;
+use Serializable;
 
 use function BiuradPHP\Support\array_get;
 
@@ -41,7 +51,7 @@ use function BiuradPHP\Support\array_get;
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  * @license BSD-3-Clause
  */
-class Container extends NetteContainer implements \ArrayAccess, \Serializable, FactoryInterface
+class Container extends NetteContainer implements ArrayAccess, Serializable, FactoryInterface
 {
     /** @var object[] service name => instance */
     private $instances = [];
@@ -60,7 +70,7 @@ class Container extends NetteContainer implements \ArrayAccess, \Serializable, F
     public function __construct(array $params = [])
     {
         $this->parameters = $params;
-        $this->methods = array_flip(get_class_methods($this));
+        $this->methods    = \array_flip(\get_class_methods($this));
     }
 
     /**
@@ -71,14 +81,43 @@ class Container extends NetteContainer implements \ArrayAccess, \Serializable, F
         throw new ContainerResolutionException('Container is not clonable');
     }
 
+    public function __serialize(): array
+    {
+        return [
+            'parameters' => $this->parameters,
+            'types'      => $this->types,
+            'aliases'    => $this->aliases,
+            'tags'       => $this->tags,
+            'wiring'     => $this->wiring,
+            'instances'  => $this->instances,
+            'methods'    => $this->methods,
+            'creating'   => $this->creating,
+        ];
+    }
+
+    public function __unserialize(array $data): void
+    {
+        $this->parameters = $data['parameters'];
+        $this->types      = $data['types'];
+        $this->aliases    = $data['aliases'];
+        $this->tags       = $data['tags'];
+        $this->wiring     = $data['wiring'];
+        $this->instances  = $data['instances'];
+        $this->methods    = $data['methods'];
+
+        if (isset($data['creating'])) {
+            $this->creating = $data['creating'];
+        }
+    }
+
     /**
      * Gets a parameter.
      *
      * @param string $name The parameter name
      *
-     * @return mixed The parameter value
-     *
      * @throws ParameterNotFoundException if the parameter is not defined
+     *
+     * @return mixed The parameter value
      */
     public function getParameter(string $name)
     {
@@ -88,24 +127,35 @@ class Container extends NetteContainer implements \ArrayAccess, \Serializable, F
             }
 
             $alternatives = [];
+
             foreach ($this->parameters as $key => $parameterValue) {
-                $lev = levenshtein($name, $key);
-                if ($lev <= \strlen($name) / 3 || false !== strpos($key, $name)) {
+                $lev = \levenshtein($name, $key);
+
+                if ($lev <= \strlen($name) / 3 || false !== \strpos($key, $name)) {
                     $alternatives[] = $key;
                 }
             }
 
             $nonNestedAlternative = null;
-            if (!\count($alternatives) && false !== strpos($name, '.')) {
-                $namePartsLength = explode('.', $name);
-                $key = array_shift($namePartsLength);
+
+            if (!\count($alternatives) && false !== \strpos($name, '.')) {
+                $namePartsLength = \explode('.', $name);
+                $key             = \array_shift($namePartsLength);
 
                 //return $this->parameters . $namePartsLength;
                 while (\count($namePartsLength)) {
                     if ($this->hasParameter($key)) {
                         if (!\is_array($this->getParameter($key))) {
                             $nonNestedAlternative = $key;
-                            throw new ParameterNotFoundException($name, null, null, null, $alternatives, $nonNestedAlternative);
+
+                            throw new ParameterNotFoundException(
+                                $name,
+                                null,
+                                null,
+                                null,
+                                $alternatives,
+                                $nonNestedAlternative
+                            );
                         }
 
                         return array_get($this->parameters, $name);
@@ -126,7 +176,7 @@ class Container extends NetteContainer implements \ArrayAccess, \Serializable, F
      */
     public function hasParameter($name)
     {
-        return array_key_exists($name, $this->parameters);
+        return \array_key_exists($name, $this->parameters);
     }
 
     /**
@@ -134,7 +184,7 @@ class Container extends NetteContainer implements \ArrayAccess, \Serializable, F
      *
      * @param string $name
      * @param object $service service or its factory
-     * @param bool $replace default is false, set true if it should be replaced
+     * @param bool   $replace default is false, set true if it should be replaced
      *
      * @return static
      */
@@ -148,9 +198,9 @@ class Container extends NetteContainer implements \ArrayAccess, \Serializable, F
             throw new Nette\InvalidStateException("Service [$name] already exists.");
         }
 
-        if (!is_object($service)) {
+        if (!\is_object($service)) {
             throw new Nette\InvalidArgumentException(
-                sprintf("Service '%s' must be a object, %s given.", $name, gettype($name))
+                \sprintf("Service '%s' must be a object, %s given.", $name, \gettype($name))
             );
         }
 
@@ -158,14 +208,14 @@ class Container extends NetteContainer implements \ArrayAccess, \Serializable, F
         $type = $this->resolveClosure($service);
 
         // Resolving wiring so we could call the service parent classes and interfaces.
-        if (!$service instanceof \Closure) {
+        if (!$service instanceof Closure) {
             $this->resolveWiring($name, $type);
         }
 
         // Resolving the method calls.
         $this->resolveMethod($name, self::getMethodName($name), $type);
 
-        if ($service instanceof \Closure) {
+        if ($service instanceof Closure) {
             $this->types[$name] = $type;
 
             // Get the method binding for the given method.
@@ -178,93 +228,18 @@ class Container extends NetteContainer implements \ArrayAccess, \Serializable, F
     }
 
     /**
-	 * Removes the service from the container.
-	 */
-	public function removeService(string $name): void
-	{
-		$name = $this->aliases[$name] ?? $name;
-		unset($this->instances[$name]);
-	}
-
-    /**
-     * Get the Closure or class to be used when building a type.
-     *
-     * @param  mixed  $abstract
-     *
-     * @return string
+     * Removes the service from the container.
      */
-    private function resolveClosure($abstract): string
+    public function removeService(string $name): void
     {
-        if ($abstract instanceof \Closure) {
-            /** @var \ReflectionFunction $tmp */
-            if ($tmp = $this->parseBindMethod($abstract)) {
-                return $tmp->getName();
-            }
-
-            return '';
-        }
-
-        return get_class($abstract);
-    }
-
-    /**
-     * Resolve callable methods.
-     *
-     * @param string $abstract
-     * @param string $concrete
-     * @param string $type
-     *
-     * @return string|null
-     */
-    private function resolveMethod(string $abstract, string $concrete, string $type): ?string
-    {
-        if (! $this->hasMethodBinding($concrete)) {
-            return $this->types[$abstract] = $type;
-        }
-        if (($expectedType = $this->getServiceType($abstract)) && !is_a($type, $expectedType, true)) {
-            throw new Nette\InvalidArgumentException(
-                "Service '$abstract' must be instance of $expectedType, " . ($type ? "$type given." : 'add typehint to closure.')
-            );
-        }
-
-        return null;
-    }
-
-    /**
-     * Resolve wiring classes + interfaces.
-     *
-     * @param string $name
-     * @param mixed  $class
-     */
-    private function resolveWiring(string $name, $class)
-    {
-        $all = [];
-        foreach (class_parents($class) + class_implements($class) + [$class] as $class) {
-            $all[$class][] = $name;
-        }
-        foreach ($all as $class => $names) {
-            $this->wiring[$class] = array_filter([
-                array_diff($names, $this->findByType($class) ?? [], $this->findByTag($class) ?? []),
-            ]);
-        }
-    }
-
-    /**
-     * Get the method to be bounded.
-     *
-     * @param array|string $method
-     *
-     * @return null|\ReflectionType
-     */
-    protected function parseBindMethod($method): ?\ReflectionType
-    {
-        return Callback::toReflection($method)->getReturnType();
+        $name = $this->aliases[$name] ?? $name;
+        unset($this->instances[$name]);
     }
 
     /**
      * Determine if the container has a method binding.
      *
-     * @param  string  $method
+     * @param string $method
      *
      * @return bool
      */
@@ -276,9 +251,8 @@ class Container extends NetteContainer implements \ArrayAccess, \Serializable, F
     /**
      * Bind a callback to resolve with Container::call.
      *
-     * @param  array|string  $method
-     * @param  \Closure  $callback
-     * @return void
+     * @param array|string $method
+     * @param Closure      $callback
      */
     public function bindMethod($method, $callback): void
     {
@@ -305,33 +279,42 @@ class Container extends NetteContainer implements \ArrayAccess, \Serializable, F
     }
 
     /**
-	 * Resolves service by type.
-     * @param  string       $type
-	 * @param  bool  $throw  exception if service doesn't exist?
-	 * @return object|null  service
-	 * @throws MissingServiceException
-	 */
-	public function getByType(string $type, bool $throw = true)
-	{
-		$type = Nette\DI\Helpers::normalizeClass($type);
-		if (!empty($this->wiring[$type][0])) {
-			if (count($names = $this->wiring[$type][0]) === 1) {
-				return $this->getService($names[0]);
-			}
-			natsort($names);
-			throw new MissingServiceException("Multiple services of type $type found: " . implode(', ', $names) . '.');
+     * Resolves service by type.
+     *
+     * @param string $type
+     * @param bool   $throw exception if service doesn't exist?
+     *
+     * @throws MissingServiceException
+     *
+     * @return null|object service
+     */
+    public function getByType(string $type, bool $throw = true)
+    {
+        $type = Nette\DI\Helpers::normalizeClass($type);
 
-		} elseif ($throw) {
-			throw new MissingServiceException("Service of type $type not found.");
+        if (!empty($this->wiring[$type][0])) {
+            if (\count($names = $this->wiring[$type][0]) === 1) {
+                return $this->getService($names[0]);
+            }
+            \natsort($names);
+
+            throw new MissingServiceException(
+                "Multiple services of type $type found: " . \implode(', ', $names) . '.'
+            );
         }
 
-		return null;
-	}
+        if ($throw) {
+            throw new MissingServiceException("Service of type $type not found.");
+        }
+
+        return null;
+    }
 
     /**
      * Gets the service type by name.
      *
      * @param string $name
+     *
      * @return string
      */
     public function getServiceType(string $name): string
@@ -347,7 +330,7 @@ class Container extends NetteContainer implements \ArrayAccess, \Serializable, F
         }
 
         if ($this->hasMethodBinding($method)) {
-            /** @var \ReflectionMethod $type */
+            /** @var ReflectionMethod $type */
             $type = $this->parseBindMethod([$this, $method]);
 
             return $type ? $type->getName() : '';
@@ -366,7 +349,8 @@ class Container extends NetteContainer implements \ArrayAccess, \Serializable, F
     public function hasService(string $name): bool
     {
         $name = $this->aliases[$name] ?? $name;
-		return $this->hasMethodBinding(self::getMethodName($name)) || isset($this->instances[$name]);
+
+        return $this->hasMethodBinding(self::getMethodName($name)) || isset($this->instances[$name]);
     }
 
     /**
@@ -390,50 +374,58 @@ class Container extends NetteContainer implements \ArrayAccess, \Serializable, F
      * Creates new instance of the service.
      *
      * @param string $name
-     * @param array $args
-     * @return object
+     * @param array  $args
      *
+     * @return object
      */
     public function createService(string $name, array $args = [])
     {
-        $name = $this->aliases[$name] ?? $name;
-		$method = self::getMethodName($name);
-        $cb = $this->methods[$method] ?? null;
+        $name   = $this->aliases[$name] ?? $name;
+        $method = self::getMethodName($name);
+        $cb     = $this->methods[$method] ?? null;
 
-		if (isset($this->creating[$name])) {
-			throw new Nette\InvalidStateException(sprintf('Circular reference detected for services: %s.', implode(', ', array_keys($this->creating))));
+        if (isset($this->creating[$name])) {
+            throw new Nette\InvalidStateException(
+                \sprintf(
+                    'Circular reference detected for services: %s.',
+                    \implode(', ', \array_keys($this->creating))
+                )
+            );
+        }
 
-		} elseif ($cb === null) {
+        if ($cb === null) {
             throw new MissingServiceException("Service '$name' not found.");
-		}
+        }
 
-		try {
-			$this->creating[$name] = true;
-			$service = $cb instanceof \Closure ? $this->callMethod($cb, $args) : $this->$method(...$args);
+        try {
+            $this->creating[$name] = true;
+            $service               = $cb instanceof Closure ? $this->callMethod($cb, $args) : $this->$method(...$args);
+        } finally {
+            unset($this->creating[$name]);
+        }
 
-		} finally {
-			unset($this->creating[$name]);
-		}
+        if (!\is_object($service)) {
+            throw new Nette\UnexpectedValueException(
+                "Unable to create service '$name', value returned by " .
+                ($cb instanceof Closure ? 'closure' : "method $method()") . ' is not object.'
+            );
+        }
 
-		if (!is_object($service)) {
-			throw new Nette\UnexpectedValueException("Unable to create service '$name', value returned by " . ($cb instanceof \Closure ? 'closure' : "method $method()") . ' is not object.');
-		}
-
-		return $service;
+        return $service;
     }
 
     /**
      * Creates new instance using autowiring.
      *
      * @param string $class
-     * @param array $args
+     * @param array  $args
      *
      * @return object
      */
     public function createInstance(string $class, array $args = [])
     {
         try {
-            $reflector = new \ReflectionClass($class);
+            $reflector = new ReflectionClass($class);
         } catch (\ReflectionException $e) {
             throw new ContainerResolutionException("Targeted class [$class] does not exist.", 0, $e);
         }
@@ -479,15 +471,6 @@ class Container extends NetteContainer implements \ArrayAccess, \Serializable, F
         return $reflector->newInstanceArgs($instances);
     }
 
-    private function autowireArguments(\ReflectionFunctionAbstract $function, array $args = []): array
-	{
-		return Nette\DI\Resolver::autowireArguments($function, $args, function (string $type, bool $single) {
-			return $single
-				? $this->getByType($type)
-				: array_map([$this, 'get'], $this->findAutowired($type));
-		});
-	}
-
     /**
      * Register a binding with the container.
      *
@@ -495,7 +478,7 @@ class Container extends NetteContainer implements \ArrayAccess, \Serializable, F
      * for each method call), function array or Closure (executed every call). Only object resolvers
      * supported by this method.
      *
-     * @param string $abstract
+     * @param string                      $abstract
      * @param Closure|string||object|null $concrete
      *
      * @return Container
@@ -512,8 +495,8 @@ class Container extends NetteContainer implements \ArrayAccess, \Serializable, F
         // If the factory is not a Closure, it means it is just a class name which is
         // bound into this container to the abstract type and we will just wrap it
         // up inside its own Closure to give us more convenience when extending.
-        if (!$concrete instanceof \Closure || (is_string($concrete) || is_object($concrete))) {
-            if ((is_string($concrete) && class_exists($concrete))) {
+        if (!$concrete instanceof Closure || (\is_string($concrete) || \is_object($concrete))) {
+            if ((\is_string($concrete) && \class_exists($concrete))) {
                 $concrete = $this->createInstance($concrete);
             }
 
@@ -531,11 +514,12 @@ class Container extends NetteContainer implements \ArrayAccess, \Serializable, F
      * Call the given Closure / class@method and inject its dependencies.
      *
      * @param callable|string $callback
-     * @param array $parameters
-     * @param string|null $defaultMethod
+     * @param array           $parameters
+     * @param null|string     $defaultMethod
+     *
+     * @throws ReflectionException
      *
      * @return mixed
-     * @throws ReflectionException
      */
     public function call($callback, array $parameters = [], $defaultMethod = null)
     {
@@ -548,6 +532,7 @@ class Container extends NetteContainer implements \ArrayAccess, \Serializable, F
     public function runScope(array $bindings, callable $scope)
     {
         $cleanup = $previous = [];
+
         foreach ($bindings as $alias => $resolver) {
             if (isset($this->instances[$alias])) {
                 $previous[$alias] = $this->instances[$alias];
@@ -561,7 +546,7 @@ class Container extends NetteContainer implements \ArrayAccess, \Serializable, F
         try {
             return $scope($this);
         } finally {
-            foreach (array_reverse($previous) as $alias => $resolver) {
+            foreach (\array_reverse($previous) as $alias => $resolver) {
                 $this->instances[$alias] = $resolver;
             }
 
@@ -577,9 +562,9 @@ class Container extends NetteContainer implements \ArrayAccess, \Serializable, F
      * pre-constructed singleton!
      *
      * @param string $alias
-     * @param array $parameters parameters to construct new class
+     * @param array  $parameters parameters to construct new class
      *
-     * @return mixed|object|null
+     * @return null|mixed|object
      */
     public function make(string $alias, ...$parameters)
     {
@@ -592,83 +577,19 @@ class Container extends NetteContainer implements \ArrayAccess, \Serializable, F
     }
 
     /**
-     * Automatically create class and register instance in container,
-     * might perform methods like auto-singletons, log populations
-     * and etc. Can be extended.
-     *
-     * @param string $class
-     * @param array $parameters
-     *
-     * @return object
-     *
-     */
-    protected function autowire(string $class, array $parameters)
-    {
-        try {
-            $refClass = new \ReflectionClass($class);
-        } catch (\ReflectionException $e) {
-            throw new ContainerResolutionException("Undefined class or binding [$class] for autowiring");
-        }
-
-        // Resolving class not found in binding or instances.
-        try {
-            //Automatically create instanc
-            if (Validators::isType($refClass->getName())) {
-                return $this->getByType($refClass->getName());
-            }
-        } catch (MissingServiceException $e) {
-            $instance = $this->createInstance($refClass->getName(), $parameters);
-        }
-
-        //Your code can go here (for example LoggerAwareInterface, custom hydration and etc)
-        $this->callInjects($instance); // Call injectors on the new class instance.
-
-        return $instance;
-    }
-
-    public function __serialize(): array
-    {
-        return [
-            'parameters' => $this->parameters,
-            'types' => $this->types,
-            'aliases' => $this->aliases,
-            'tags' => $this->tags,
-            'wiring' => $this->wiring,
-            'instances' => $this->instances,
-            'methods' => $this->methods,
-            'creating' => $this->creating,
-        ];
-    }
-
-    /**
      * @internal
      */
     final public function serialize(): string
     {
-        return serialize($this->__serialize());
-    }
-
-    public function __unserialize(array $data): void
-    {
-        $this->parameters = $data['parameters'];
-        $this->types = $data['types'];
-        $this->aliases = $data['aliases'];
-        $this->tags = $data['tags'];
-        $this->wiring = $data['wiring'];
-        $this->instances = $data['instances'];
-        $this->methods = $data['methods'];
-
-        if (isset($data['creating'])) {
-            $this->creating = $data['creating'];
-        }
+        return \serialize($this->__serialize());
     }
 
     /**
      * @internal
      */
-    final public function unserialize($serialized)
+    final public function unserialize($serialized): void
     {
-        $this->__unserialize(unserialize($serialized));
+        $this->__unserialize(\unserialize($serialized));
     }
 
     /**
@@ -706,8 +627,9 @@ class Container extends NetteContainer implements \ArrayAccess, \Serializable, F
      *
      * @param string $key
      *
-     * @return mixed
      * @throws ReflectionException
+     *
+     * @return mixed
      */
     public function offsetGet($key)
     {
@@ -718,7 +640,8 @@ class Container extends NetteContainer implements \ArrayAccess, \Serializable, F
      * Set the value at a given offset.
      *
      * @param string $key
-     * @param mixed $value
+     * @param mixed  $value
+     *
      * @return Container
      */
     public function offsetSet($key, $value)
@@ -731,8 +654,130 @@ class Container extends NetteContainer implements \ArrayAccess, \Serializable, F
      *
      * @param string $key
      */
-    public function offsetUnset($key)
+    public function offsetUnset($key): void
     {
         unset($this->instances[$key]);
+    }
+
+    /**
+     * Get the method to be bounded.
+     *
+     * @param array|string $method
+     *
+     * @return null|ReflectionType
+     */
+    protected function parseBindMethod($method): ?ReflectionType
+    {
+        return Callback::toReflection($method)->getReturnType();
+    }
+
+    /**
+     * Automatically create class and register instance in container,
+     * might perform methods like auto-singletons, log populations
+     * and etc. Can be extended.
+     *
+     * @param string $class
+     * @param array  $parameters
+     *
+     * @return object
+     */
+    protected function autowire(string $class, array $parameters)
+    {
+        try {
+            $refClass = new ReflectionClass($class);
+        } catch (\ReflectionException $e) {
+            throw new ContainerResolutionException("Undefined class or binding [$class] for autowiring");
+        }
+
+        // Resolving class not found in binding or instances.
+        try {
+            //Automatically create instanc
+            if (Validators::isType($refClass->getName())) {
+                return $this->getByType($refClass->getName());
+            }
+        } catch (MissingServiceException $e) {
+            $instance = $this->createInstance($refClass->getName(), $parameters);
+        }
+
+        //Your code can go here (for example LoggerAwareInterface, custom hydration and etc)
+        $this->callInjects($instance); // Call injectors on the new class instance.
+
+        return $instance;
+    }
+
+    /**
+     * Get the Closure or class to be used when building a type.
+     *
+     * @param mixed $abstract
+     *
+     * @return string
+     */
+    private function resolveClosure($abstract): string
+    {
+        if ($abstract instanceof Closure) {
+            /** @var ReflectionFunction $tmp */
+            if ($tmp = $this->parseBindMethod($abstract)) {
+                return $tmp->getName();
+            }
+
+            return '';
+        }
+
+        return \get_class($abstract);
+    }
+
+    /**
+     * Resolve callable methods.
+     *
+     * @param string $abstract
+     * @param string $concrete
+     * @param string $type
+     *
+     * @return null|string
+     */
+    private function resolveMethod(string $abstract, string $concrete, string $type): ?string
+    {
+        if (!$this->hasMethodBinding($concrete)) {
+            return $this->types[$abstract] = $type;
+        }
+
+        if (($expectedType = $this->getServiceType($abstract)) && !\is_a($type, $expectedType, true)) {
+            throw new Nette\InvalidArgumentException(
+                "Service '$abstract' must be instance of $expectedType, " .
+                ($type ? "$type given." : 'add typehint to closure.')
+            );
+        }
+
+        return null;
+    }
+
+    /**
+     * Resolve wiring classes + interfaces.
+     *
+     * @param string $name
+     * @param mixed  $class
+     */
+    private function resolveWiring(string $name, $class): void
+    {
+        $all = [];
+
+        foreach (\class_parents($class) + \class_implements($class) + [$class] as $class) {
+            $all[$class][] = $name;
+        }
+
+        foreach ($all as $class => $names) {
+            $this->wiring[$class] = \array_filter([
+                \array_diff($names, $this->findByType($class) ?? [], $this->findByTag($class) ?? []),
+            ]);
+        }
+    }
+
+    private function autowireArguments(ReflectionFunctionAbstract $function, array $args = []): array
+    {
+        return Nette\DI\Resolver::autowireArguments($function, $args, function (string $type, bool $single) {
+            return $single
+                ? $this->getByType($type)
+                : \array_map([$this, 'get'], $this->findAutowired($type));
+        });
     }
 }

@@ -1,26 +1,26 @@
 <?php
 
+declare(strict_types=1);
+
 /*
- * This code is under BSD 3-Clause "New" or "Revised" License.
+ * This file is part of BiuradPHP opensource projects.
  *
- * PHP version 7 and above required
- *
- * @category  DependencyInjection
+ * PHP version 7.1 and above required
  *
  * @author    Divine Niiquaye Ibok <divineibok@gmail.com>
  * @copyright 2019 Biurad Group (https://biurad.com/)
  * @license   https://opensource.org/licenses/BSD-3-Clause License
  *
- * @link      https://www.biurad.com/projects/dependencyinjection
- * @since     Version 0.1
+ * For the full copyright and license information, please view the LICENSE
+ * file that was distributed with this source code.
  */
 
 namespace BiuradPHP\DependencyInjection;
 
-use Nette;
-use BiuradPHP\DependencyInjection\Config;
-use Nette\DI\CompilerExtension as NetteCompilerExtension;
 use BiuradPHP\DependencyInjection\Concerns\ExtensionDefinitionsHelper;
+use LogicException;
+use Nette;
+use Nette\DI\CompilerExtension as NetteCompilerExtension;
 
 /**
  * Configurator compiling extension.
@@ -30,7 +30,7 @@ use BiuradPHP\DependencyInjection\Concerns\ExtensionDefinitionsHelper;
  */
 abstract class CompilerExtension extends NetteCompilerExtension
 {
-    /** @var ExtensionDefinitionsHelper|null */
+    /** @var null|ExtensionDefinitionsHelper */
     private $helper;
 
     /**
@@ -47,8 +47,31 @@ abstract class CompilerExtension extends NetteCompilerExtension
      * @return Concerns\ContainerBuilder
      */
     public function getContainerBuilder(): Nette\DI\ContainerBuilder
-	{
-		return $this->compiler->getContainerBuilder();
+    {
+        return $this->compiler->getContainerBuilder();
+    }
+
+    /**
+     * Processes configuration data. Intended to be overridden by descendant.
+     */
+    public function loadConfiguration(): void
+    {
+    }
+
+    /**
+     * Adjusts DI container before is compiled to PHP class. Intended to be overridden by descendant.
+     */
+    public function beforeCompile(): void
+    {
+    }
+
+    /**
+     * Adjusts DI container compiled to PHP class. Intended to be overridden by descendant.
+     *
+     * @param Nette\PhpGenerator\ClassType $class
+     */
+    public function afterCompile(Nette\PhpGenerator\ClassType $class): void
+    {
     }
 
     /**
@@ -60,23 +83,23 @@ abstract class CompilerExtension extends NetteCompilerExtension
     {
         try {
             $extensionConfigs = $this->compiler->getExtension($name);
-        } catch (\LogicException $e) {
+        } catch (LogicException $e) {
             $extensionConfigs = false;
         }
 
-        if (! $this->compiler->hasExtension($name)) {
+        if (!$this->compiler->hasExtension($name)) {
             $extensionConfigs = $this->compiler->getExtensions($name);
         }
 
-        if (is_array($extensionConfigs) && count($extensionConfigs) === 1) {
-            $extensionConfigs = $extensionConfigs[key($extensionConfigs)];
+        if (\is_array($extensionConfigs) && \count($extensionConfigs) === 1) {
+            $extensionConfigs = $extensionConfigs[\key($extensionConfigs)];
         }
 
         return !$extensionConfigs ? false : $extensionConfigs->getConfig();
     }
 
-	protected function getHelper(): ExtensionDefinitionsHelper
-	{
+    protected function getHelper(): ExtensionDefinitionsHelper
+    {
         if ($this->helper === null) {
             $this->helper = new ExtensionDefinitionsHelper($this->compiler);
         }
@@ -84,31 +107,8 @@ abstract class CompilerExtension extends NetteCompilerExtension
         return $this->helper;
     }
 
-    /**
-     * Processes configuration data. Intended to be overridden by descendant.
-     */
-    public function loadConfiguration()
-    {
-    }
-
-    /**
-     * Adjusts DI container before is compiled to PHP class. Intended to be overridden by descendant.
-     */
-    public function beforeCompile()
-    {
-    }
-
-    /**
-     * Adjusts DI container compiled to PHP class. Intended to be overridden by descendant.
-     *
-     * @param Nette\PhpGenerator\ClassType $class
-     */
-    public function afterCompile(Nette\PhpGenerator\ClassType $class)
-    {
-    }
-
     protected function createLoader(): Nette\DI\Config\Loader
-	{
-		return new Config\Loader;
-	}
+    {
+        return new Config\Loader();
+    }
 }
