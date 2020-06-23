@@ -135,7 +135,7 @@ final class NeonAdapter implements Nette\DI\Config\Adapter
         // So yaml syntax could work properly
         return \str_replace(
             ['~', '\'false\'', '\'true\'', '"false"', '"true"'],
-            ['null', 'false', 'true'],
+            ['null', 'false', 'true', 'false', 'true'],
             $contents
         );
     }
