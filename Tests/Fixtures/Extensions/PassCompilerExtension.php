@@ -15,19 +15,14 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace BiuradPHP\DependencyInjection\Interfaces;
+namespace BiuradPHP\DependencyInjection\Tests\Extensions;
 
-use BiuradPHP\DependencyInjection\Compilers\ContainerBuilder;
+use BiuradPHP\DependencyInjection\Concerns\Compiler;
+use BiuradPHP\DependencyInjection\Interfaces\PassCompilerAwareInterface;
 
-/**
- * Interface that must be implemented by compilation passes.
- *
- * @author Johannes M. Schmitt <schmittjoh@gmail.com>
- */
-interface CompilerPassInterface
+class PassCompilerExtension extends ExampleExtension implements PassCompilerAwareInterface
 {
-    /**
-     * You can modify the container here before it is dumped to PHP code.
-     */
-    public function process(ContainerBuilder $container);
+    public function addCompilerPasses(Compiler &$compiler): void
+    {
+    }
 }

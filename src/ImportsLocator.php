@@ -15,9 +15,11 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace BiuradPHP\DependencyInjection\Concerns;
+namespace BiuradPHP\DependencyInjection;
 
+use BiuradPHP\DependencyInjection\Singleton;
 use Composer\Autoload\ClassLoader;
+use Composer\InstalledVersions;
 use InvalidArgumentException;
 use Nette\DI\CompilerExtension;
 use Nette\NotSupportedException;
@@ -29,7 +31,10 @@ use ReflectionObject;
 use RuntimeException;
 use SplFileInfo;
 
-class ImportsLocator
+/**
+ * @author Divine Niiquaye Ibok <divineibok@gmail.com>
+ */
+class ImportsLocator extends Singleton
 {
     /**
      * Returns the file path for a given compiler extension resource.
@@ -98,12 +103,14 @@ class ImportsLocator
         $path      = \dirname((new ReflectionClass(ClassLoader::class))->getFileName());
         $directory = \dirname((new ReflectionObject($extension))->getFileName());
 
-        $packagist = \json_decode(\file_get_contents($path . '/installed.json'), true);
+        $packagist = \class_exists(InstalledVersions::class)
+            ? InstalledVersions::getRawData()
+            : \json_decode(\file_get_contents($path . '/installed.json'), true);
 
         foreach ($packagist as $package) {
             $packagePath = \str_replace(['\\', '/'], \DIRECTORY_SEPARATOR, \dirname($path, 1) . '/' . $package['name']);
 
-            if (!Strings::startsWith($directory, $packagePath)) {
+            if (!self::isDirectory($directory, $packagePath)) {
                 continue;
             }
             $pathPrefix = \current($package['autoload']['psr-4']
@@ -114,5 +121,14 @@ class ImportsLocator
         }
 
         return \dirname($directory, 1) . '/';
+    }
+
+    private static function isDirectory(string $directory, string $packagePath): bool
+    {
+        if (\function_exists('str_starts_with')) {
+            return \str_starts_with($directory, $packagePath); // new function in php 8.
+        }
+
+        return Strings::startsWith($directory, $packagePath);
     }
 }

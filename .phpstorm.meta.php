@@ -12,4 +12,3 @@ namespace PHPSTORM_META;
 */
 override(\BiuradPHP\DependencyInjection\Container::get(0), map(['' => '@']));
 override(\BiuradPHP\DependencyInjection\Container::make(0), map(['' => '@']));
-override(app(0), map(['' => '@']));

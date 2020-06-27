@@ -15,19 +15,9 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace BiuradPHP\DependencyInjection\Interfaces;
+$paths = [
+    \dirname(__DIR__, 3) . '/autoload.php',
+    \dirname(__DIR__) . '/vendor/autoload.php',
+];
 
-use BiuradPHP\DependencyInjection\Compilers\ContainerBuilder;
-
-/**
- * Interface that must be implemented by compilation passes.
- *
- * @author Johannes M. Schmitt <schmittjoh@gmail.com>
- */
-interface CompilerPassInterface
-{
-    /**
-     * You can modify the container here before it is dumped to PHP code.
-     */
-    public function process(ContainerBuilder $container);
-}
+return require \current(\array_filter($paths, 'file_exists'));

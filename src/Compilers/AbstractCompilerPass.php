@@ -15,12 +15,13 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace BiuradPHP\DependencyInjection\Compiler;
+namespace BiuradPHP\DependencyInjection\Compilers;
 
-use BiuradPHP\DependencyInjection\Concerns\Compiler;
-use BiuradPHP\DependencyInjection\Concerns\ContainerBuilder;
 use BiuradPHP\DependencyInjection\Interfaces\CompilerPassInterface;
 
+/**
+ * @author Divine Niiquaye Ibok <divineibok@gmail.com>
+ */
 abstract class AbstractCompilerPass implements CompilerPassInterface
 {
     /** @var Compiler */

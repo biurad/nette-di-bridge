@@ -15,15 +15,14 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace BiuradPHP\DependencyInjection\Concerns;
+namespace BiuradPHP\DependencyInjection\Compilers;
 
 use Nette\DI\ContainerLoader as NetteContainerLoader;
 
 /**
  * DI container loader.
  *
- * @author David Grudl <https://davidgrudl.com>
- * @license BSD-3-Clause
+ * @author Divine Niiquaye Ibok <divineibok@gmail.com>
  */
 class ContainerLoader extends NetteContainerLoader
 {

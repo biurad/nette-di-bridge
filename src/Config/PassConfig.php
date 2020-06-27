@@ -15,10 +15,12 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace BiuradPHP\DependencyInjection\Concerns;
+namespace BiuradPHP\DependencyInjection\Config;
 
-use BiuradPHP\DependencyInjection\Compiler\AbstractCompilerPass;
+use BiuradPHP\DependencyInjection\Compilers\AbstractCompilerPass;
+use BiuradPHP\DependencyInjection\Compilers\Compiler;
 use BiuradPHP\DependencyInjection\Interfaces\CompilerPassInterface;
+use InvalidArgumentException;
 
 /**
  * Compiler Pass Configuration.
@@ -82,7 +84,7 @@ class PassConfig
         $property = $type . 'Passes';
 
         if (!isset($this->$property)) {
-            throw new \InvalidArgumentException(\sprintf('Invalid type "%s".', $type));
+            throw new InvalidArgumentException(\sprintf('Invalid type "%s".', $type));
         }
 
         $passes = &$this->$property;

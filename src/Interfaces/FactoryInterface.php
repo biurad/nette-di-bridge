@@ -51,7 +51,7 @@ interface FactoryInterface extends ContainerInterface
      *
      * @return bool The presence of parameter in container
      */
-    public function hasParameter($name);
+    public function hasParameter($name): bool;
 
     /**
      * Removes the service from the container.
@@ -61,21 +61,35 @@ interface FactoryInterface extends ContainerInterface
     /**
      * Adds the service to the container.
      *
-     * @param object $service service or its factory
+     * @param string          $name
+     * @param callable|object $service service or its factory
      *
-     * @return static
+     * @return COntainer
      */
-    public function addService(string $name, $service);
+    public function addService(string $name, $service): Container;
+
+    /**
+     * Does the service exist?
+     *
+     * @param string $name
+     *
+     * @return bool
+     */
+    public function hasService(string $name): bool;
 
     /**
      * Gets the service type by name.
      *
      * @throws MissingServiceException
+     *
+     * @return string
      */
     public function getServiceType(string $name): string;
 
     /**
      * Is the service created?
+     *
+     * @return bool
      */
     public function isCreated(string $name): bool;
 
@@ -87,6 +101,15 @@ interface FactoryInterface extends ContainerInterface
      * @return object
      */
     public function createService(string $name, array $args = []);
+
+    /**
+     * Gets the service object by name.
+     *
+     * @param string $name
+     *
+     * @return object
+     */
+    public function getService(string $name);
 
     /**
      * Resolves service by type.
@@ -146,6 +169,15 @@ interface FactoryInterface extends ContainerInterface
     public function callMethod(callable $function, array $args = []);
 
     /**
+     * Determine if the container has a method binding.
+     *
+     * @param string $method
+     *
+     * @return bool
+     */
+    public function hasMethodBinding($method): bool;
+
+    /**
      * Register a binding with the container.
      *
      * Bind value resolver to container alias. Resolver can be class name (will be constructed
@@ -158,15 +190,14 @@ interface FactoryInterface extends ContainerInterface
     public function bind(string $abstract, $concrete = null): Container;
 
     /**
-     * Call the given Closure / class@method and inject its dependencies.
+     * Call the given callable / class@method / class:method and inject its dependencies.
      *
      * @param callable|string $callback
      * @param array           $parameters
-     * @param null|string     $defaultMethod
      *
      * @return mixed
      */
-    public function call($callback, array $parameters = [], $defaultMethod = null);
+    public function call($callback, array $parameters = []);
 
     /**
      * Create instance of requested class using binding class aliases and set of parameters provided

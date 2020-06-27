@@ -47,9 +47,7 @@ use function BiuradPHP\Support\array_get;
  * with classes only to be as much invisible as possible. Attention, this is hungry implementation
  * of container, meaning it WILL try to resolve dependency unless you specified custom lazy factory.
  *
- * @author David Grudl <https://davidgrudl.com>
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
- * @license BSD-3-Clause
  */
 class Container extends NetteContainer implements ArrayAccess, Serializable, FactoryInterface
 {
@@ -111,13 +109,7 @@ class Container extends NetteContainer implements ArrayAccess, Serializable, Fac
     }
 
     /**
-     * Gets a parameter.
-     *
-     * @param string $name The parameter name
-     *
-     * @throws ParameterNotFoundException if the parameter is not defined
-     *
-     * @return mixed The parameter value
+     * {@inheritdoc}
      */
     public function getParameter(string $name)
     {
@@ -168,38 +160,27 @@ class Container extends NetteContainer implements ArrayAccess, Serializable, Fac
     }
 
     /**
-     * Checks if a parameter exists.
-     *
-     * @param string $name The parameter name
-     *
-     * @return bool The presence of parameter in container
+     * {@inheritdoc}
      */
-    public function hasParameter($name)
+    public function hasParameter($name): bool
     {
         return \array_key_exists($name, $this->parameters);
     }
 
     /**
-     * Adds the service to the container.
-     *
-     * @param string $name
-     * @param object $service service or its factory
-     * @param bool   $replace default is false, set true if it should be replaced
-     *
-     * @return static
+     * {@inheritdoc}
      */
-    public function addService(string $name, $service)
+    public function addService(string $name, $service): Container
     {
         $name = $this->aliases[$name] ?? $name;
 
         // Report exception if name already exists.
         if (isset($this->instances[$name])) {
-            //unset($this->instances[$name]);
-            throw new Nette\InvalidStateException("Service [$name] already exists.");
+            throw new ContainerResolutionException("Service [$name] already exists.");
         }
 
         if (!\is_object($service)) {
-            throw new Nette\InvalidArgumentException(
+            throw new ContainerResolutionException(
                 \sprintf("Service '%s' must be a object, %s given.", $name, \gettype($name))
             );
         }
@@ -219,7 +200,7 @@ class Container extends NetteContainer implements ArrayAccess, Serializable, Fac
             $this->types[$name] = $type;
 
             // Get the method binding for the given method.
-            $this->bindMethod($name, $service);
+            $this->methods[self::getMethodName($name)] = $service;
         } else {
             $this->instances[$name] = $service;
         }
@@ -228,7 +209,7 @@ class Container extends NetteContainer implements ArrayAccess, Serializable, Fac
     }
 
     /**
-     * Removes the service from the container.
+     * {@inheritdoc}
      */
     public function removeService(string $name): void
     {
@@ -237,11 +218,7 @@ class Container extends NetteContainer implements ArrayAccess, Serializable, Fac
     }
 
     /**
-     * Determine if the container has a method binding.
-     *
-     * @param string $method
-     *
-     * @return bool
+     * {@inheritdoc}
      */
     public function hasMethodBinding($method): bool
     {
@@ -249,22 +226,7 @@ class Container extends NetteContainer implements ArrayAccess, Serializable, Fac
     }
 
     /**
-     * Bind a callback to resolve with Container::call.
-     *
-     * @param array|string $method
-     * @param Closure      $callback
-     */
-    public function bindMethod($method, $callback): void
-    {
-        $this->methods[self::getMethodName($method)] = $callback;
-    }
-
-    /**
-     * Gets the service object by name.
-     *
-     * @param string $name
-     *
-     * @return object
+     * {@inheritdoc}
      */
     public function getService(string $name)
     {
@@ -279,14 +241,7 @@ class Container extends NetteContainer implements ArrayAccess, Serializable, Fac
     }
 
     /**
-     * Resolves service by type.
-     *
-     * @param string $type
-     * @param bool   $throw exception if service doesn't exist?
-     *
-     * @throws MissingServiceException
-     *
-     * @return null|object service
+     * {@inheritdoc}
      */
     public function getByType(string $type, bool $throw = true)
     {
@@ -311,11 +266,7 @@ class Container extends NetteContainer implements ArrayAccess, Serializable, Fac
     }
 
     /**
-     * Gets the service type by name.
-     *
-     * @param string $name
-     *
-     * @return string
+     * {@inheritdoc}
      */
     public function getServiceType(string $name): string
     {
@@ -340,11 +291,7 @@ class Container extends NetteContainer implements ArrayAccess, Serializable, Fac
     }
 
     /**
-     * Does the service exist?
-     *
-     * @param string $name
-     *
-     * @return bool
+     * {@inheritdoc}
      */
     public function hasService(string $name): bool
     {
@@ -354,11 +301,7 @@ class Container extends NetteContainer implements ArrayAccess, Serializable, Fac
     }
 
     /**
-     * Is the service created?
-     *
-     * @param string $name
-     *
-     * @return bool
+     * {@inheritdoc}
      */
     public function isCreated(string $name): bool
     {
@@ -371,12 +314,7 @@ class Container extends NetteContainer implements ArrayAccess, Serializable, Fac
     }
 
     /**
-     * Creates new instance of the service.
-     *
-     * @param string $name
-     * @param array  $args
-     *
-     * @return object
+     * {@inheritdoc}
      */
     public function createService(string $name, array $args = [])
     {
@@ -385,7 +323,7 @@ class Container extends NetteContainer implements ArrayAccess, Serializable, Fac
         $cb     = $this->methods[$method] ?? null;
 
         if (isset($this->creating[$name])) {
-            throw new Nette\InvalidStateException(
+            throw new ContainerResolutionException(
                 \sprintf(
                     'Circular reference detected for services: %s.',
                     \implode(', ', \array_keys($this->creating))
@@ -415,12 +353,7 @@ class Container extends NetteContainer implements ArrayAccess, Serializable, Fac
     }
 
     /**
-     * Creates new instance using autowiring.
-     *
-     * @param string $class
-     * @param array  $args
-     *
-     * @return object
+     * {@inheritdoc}
      */
     public function createInstance(string $class, array $args = [])
     {
@@ -457,7 +390,7 @@ class Container extends NetteContainer implements ArrayAccess, Serializable, Fac
             // default paramter exists, why not let's use it.
             foreach ($constructor->getParameters() as $position => $parameter) {
                 try {
-                    if (!isset($args[$position]) || !isset($args[$parameter->name])) {
+                    if (!(isset($args[$position]) || isset($args[$parameter->name]))) {
                         $args[$position] = Nette\Utils\Reflection::getParameterDefaultValue($parameter);
                     }
                 } catch (\ReflectionException $e) {
@@ -472,16 +405,7 @@ class Container extends NetteContainer implements ArrayAccess, Serializable, Fac
     }
 
     /**
-     * Register a binding with the container.
-     *
-     * Bind value resolver to container alias. Resolver can be class name (will be constructed
-     * for each method call), function array or Closure (executed every call). Only object resolvers
-     * supported by this method.
-     *
-     * @param string                      $abstract
-     * @param Closure|string||object|null $concrete
-     *
-     * @return Container
+     * {@inheritdoc}
      */
     public function bind(string $abstract, $concrete = null): Container
     {
@@ -511,69 +435,61 @@ class Container extends NetteContainer implements ArrayAccess, Serializable, Fac
     }
 
     /**
-     * Call the given Closure / class@method and inject its dependencies.
-     *
-     * @param callable|string $callback
-     * @param array           $parameters
-     * @param null|string     $defaultMethod
-     *
-     * @throws ReflectionException
-     *
-     * @return mixed
+     * {@inheritdoc}
      */
-    public function call($callback, array $parameters = [], $defaultMethod = null)
+    public function call($callback, array $parameters = [])
     {
-        return BoundMethod::call($this, $callback, $parameters, $defaultMethod);
+        return BoundMethod::call($this, $callback, $parameters);
     }
 
     /**
-     * @inheritdoc
+     * {@inheritdoc}
      */
     public function runScope(array $bindings, callable $scope)
     {
         $cleanup = $previous = [];
 
         foreach ($bindings as $alias => $resolver) {
-            if (isset($this->instances[$alias])) {
-                $previous[$alias] = $this->instances[$alias];
-            } else {
-                $cleanup[] = $alias;
+            if ($this->has($alias)) {
+                $previous[$alias] = $this->get($alias);
+                continue;
             }
-
+            
+            $cleanup[] = $alias;
             $this->bind($alias, $resolver);
         }
 
         try {
-            return $scope($this);
+            return $scope(...[&$this]);
         } finally {
             foreach (\array_reverse($previous) as $alias => $resolver) {
                 $this->instances[$alias] = $resolver;
             }
 
             foreach ($cleanup as $alias) {
-                unset($this->instances[$alias]);
+                $this->removeService($alias);
             }
         }
     }
 
     /**
-     * Create instance of requested class using binding class aliases and set of parameters provided
-     * by user, rest of constructor parameters must be filled by container. Method might return
-     * pre-constructed singleton!
-     *
-     * @param string $alias
-     * @param array  $parameters parameters to construct new class
-     *
-     * @return null|mixed|object
+     * {@inheritdoc}
      */
     public function make(string $alias, ...$parameters)
     {
         try {
             return $this->getService($alias);
         } catch (MissingServiceException $e) {
+            // Allow passing arrays or individual lists of dependencies
+            if (isset($parameters[0]) && \is_array($parameters[0]) && \count($parameters) === 1) {
+                $parameters = \array_shift($parameters);
+            }
+
             //No direct instructions how to construct class, make is automatically
             return $this->autowire($alias, $parameters);
         }
+
+        return null;
     }
 
     /**
@@ -660,18 +576,6 @@ class Container extends NetteContainer implements ArrayAccess, Serializable, Fac
     }
 
     /**
-     * Get the method to be bounded.
-     *
-     * @param array|string $method
-     *
-     * @return null|ReflectionType
-     */
-    protected function parseBindMethod($method): ?ReflectionType
-    {
-        return Callback::toReflection($method)->getReturnType();
-    }
-
-    /**
      * Automatically create class and register instance in container,
      * might perform methods like auto-singletons, log populations
      * and etc. Can be extended.
@@ -703,6 +607,18 @@ class Container extends NetteContainer implements ArrayAccess, Serializable, Fac
         $this->callInjects($instance); // Call injectors on the new class instance.
 
         return $instance;
+    }
+
+    /**
+     * Get the method to be bounded.
+     *
+     * @param array|string $method
+     *
+     * @return null|ReflectionType
+     */
+    private function parseBindMethod($method): ?ReflectionType
+    {
+        return Callback::toReflection($method)->getReturnType();
     }
 
     /**
@@ -742,7 +658,7 @@ class Container extends NetteContainer implements ArrayAccess, Serializable, Fac
         }
 
         if (($expectedType = $this->getServiceType($abstract)) && !\is_a($type, $expectedType, true)) {
-            throw new Nette\InvalidArgumentException(
+            throw new ContainerResolutionException(
                 "Service '$abstract' must be instance of $expectedType, " .
                 ($type ? "$type given." : 'add typehint to closure.')
             );

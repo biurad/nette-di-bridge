@@ -15,7 +15,7 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace BiuradPHP\DependencyInjection\Concerns;
+namespace BiuradPHP\DependencyInjection\Compilers;
 
 use BiuradPHP\DependencyInjection\Config;
 use BiuradPHP\DependencyInjection\Exceptions\InvalidConfigurationException;
@@ -33,9 +33,7 @@ use ReflectionClass;
 /**
  * DI container compiler.
  *
- * @author David Grudl <https://davidgrudl.com>
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
- * @license BSD-3-Clause
  */
 class Compiler extends NetteCompiler
 {
@@ -65,7 +63,7 @@ class Compiler extends NetteCompiler
     /** @var DependencyChecker */
     private $dependencies;
 
-    /** @var PassConfig */
+    /** @var Config\PassConfig */
     private $passConfig;
 
     /** @var string */
@@ -79,7 +77,7 @@ class Compiler extends NetteCompiler
         $this->addExtension(self::PARAMETERS, new Extensions\ParametersExtension($this->configs));
 
         // Add Compilers Pass...
-        $this->passConfig = new PassConfig($this);
+        $this->passConfig = new Config\PassConfig($this);
     }
 
     /**
@@ -113,7 +111,7 @@ class Compiler extends NetteCompiler
      */
     public function addPass(
         CompilerPassInterface $pass,
-        string $type = PassConfig::TYPE_BEFORE_OPTIMIZATION,
+        string $type = Config\PassConfig::TYPE_BEFORE_OPTIMIZATION,
         int $priority = 0
     ): void {
         $this->passConfig->addPass($pass, $type, $priority);
@@ -324,7 +322,7 @@ class Compiler extends NetteCompiler
             $pass->process($this->getContainerBuilder());
         }
 
-        return $this->generateCode();
+        return \str_replace('Nette\Bridges\DITracy\ContainerPanel', ContainerPanel::class, $this->generateCode());
     }
 
     /** @internal */

@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace BiuradPHP\DependencyInjection\Interfaces;
 
-use BiuradPHP\DependencyInjection\Concerns\Compiler;
+use BiuradPHP\DependencyInjection\Compilers\Compiler;
 
 /**
  * ContainerAwareInterface should be implemented by classes that depends on a Container.

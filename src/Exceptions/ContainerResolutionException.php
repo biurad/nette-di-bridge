@@ -20,6 +20,6 @@ namespace BiuradPHP\DependencyInjection\Exceptions;
 use Nette;
 use Psr\Container\ContainerExceptionInterface;
 
-class ContainerResolutionException extends Nette\DI\MissingServiceException implements ContainerExceptionInterface
+class ContainerResolutionException extends Nette\InvalidStateException implements ContainerExceptionInterface
 {
 }

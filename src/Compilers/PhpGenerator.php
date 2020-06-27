@@ -15,7 +15,7 @@ declare(strict_types=1);
  * file that was distributed with this source code.
  */
 
-namespace BiuradPHP\DependencyInjection\Concerns;
+namespace BiuradPHP\DependencyInjection\Compilers;
 
 use BiuradPHP\DependencyInjection\Container;
 use BiuradPHP\DependencyInjection\Exceptions\ServiceCreationException;
@@ -30,9 +30,7 @@ use Throwable;
 /**
  * Container PHP code generator.
  *
- * @author David Grudl <https://davidgrudl.com>
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
- * @license BSD-3-Clause
  */
 class PhpGenerator extends NettePhpGenerator
 {

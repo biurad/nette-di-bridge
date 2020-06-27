@@ -26,7 +26,6 @@ use Nette\DI\CompilerExtension as NetteCompilerExtension;
  * Configurator compiling extension.
  *
  * @author Divine Niiquaye Ibok <divineibok@gmail.com>
- * @license BSD-3-Clause
  */
 abstract class CompilerExtension extends NetteCompilerExtension
 {
