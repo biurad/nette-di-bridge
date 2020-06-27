@@ -17,7 +17,7 @@ declare(strict_types=1);
 
 namespace BiuradPHP\DependencyInjection\Extensions;
 
-use BiuradPHP\DependencyInjection\Concerns\ExtensionDefinitionsHelper;
+use BiuradPHP\DependencyInjection\Definitions\ExtensionDefinitionsHelper;
 use BiuradPHP\DependencyInjection\Interfaces\ContainerAwareInterface;
 
 class ContainerAwareExtension extends \BiuradPHP\DependencyInjection\CompilerExtension
