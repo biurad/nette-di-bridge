@@ -202,7 +202,6 @@ public function doSomething(UserContext $user)
 
 In short, you can receive active context from container or injection inside the IoC scope as you would normally do for any normal dependency but you **must not store** it between scopes.
 
-
 ## Changelog
 
 Please see [CHANGELOG](CHANGELOG.md) for more information what has changed recently.
@@ -232,7 +231,7 @@ You're free to use this package, but if it makes it to your production environme
 
 Post Here: [Project Patreons - https://patreons.biurad.com](https://patreons.biurad.com)
 
-We publish all received request's on our website;
+We publish all received request's on our website.
 
 ## Credits
 
